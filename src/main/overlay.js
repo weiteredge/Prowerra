@@ -11,7 +11,7 @@ function createOverlay() {
     width: 650,
     height: 540,
     icon: iconPath,
-    skipTaskbar: false,
+    skipTaskbar: true,
     alwaysOnTop: true,
     transparent: true,
     frame: false,
