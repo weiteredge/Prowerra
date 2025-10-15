@@ -1,0 +1,841 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: white;
+  -webkit-user-select: none; /* Prevent selection so dragging is reliable */
+  user-select: none; /* Standard property */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+  -webkit-app-region: drag;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+
+/* Top drag gutter */
+.drag-gutter.top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 14px; /* Thin strip for dragging */
+  -webkit-app-region: drag;
+  z-index: 900; /* below close button (1001) */
+}
+
+/* Allow clicks on interactive elements while the window is otherwise draggable */
+.no-drag { -webkit-app-region: no-drag; }
+button, input, select, textarea, a { -webkit-app-region: no-drag; }
+
+/* Let inputs/textareas be selectable for editing */
+input, textarea { -webkit-user-select: text; user-select: text; }
+/* Conversation history content can be selectable if needed */
+.conversation-container, .conversation-history, #aiResponse, #caption {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Main scrollable container */
+.scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 60px 8px var(--input-panel-h, 120px) 8px; /* bottom padding matches input panel */
+  margin: 0 24px; /* Leave 24px draggable gutters on left/right */
+  scroll-behavior: smooth;
+  position: relative;
+  z-index: 1;
+  -webkit-app-region: no-drag; /* allow scrolling and clicks */
+}
+
+/* Custom scrollbar for the entire overlay */
+.scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* Smooth scrolling for the entire document */
+html {
+  scroll-behavior: smooth;
+}
+
+.panel {
+  -webkit-app-region: no-drag; /* allow interacting with content */
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.35);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  overflow: hidden;
+}
+
+/* Configuration panel specific styles */
+#configPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#panel-code .panel {
+  width: 100%;
+  min-height: calc(100vh - 140px); /* fill most of viewport */
+  position: sticky;          /* keep the code panel fixed within scroll */
+  top: calc(var(--tabs-h, 48px) - 6px);  /* sit slightly closer to tabs to reduce gap */
+  z-index: 1;
+  margin-bottom: var(--input-panel-h, 120px); /* avoid overlapping fixed input panel */
+}
+
+#codeAnswer {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: pre-wrap;       /* wrap long lines */
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+#configPanel .api-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#configPanel .bottom-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+#configPanel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  font-size: 13px;
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.label-with-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  gap: 6px;
+}
+
+.label-text {
+  font-size: 13px;
+  color: #f0f0f0;
+  white-space: nowrap;
+}
+
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  margin-left: 6px;
+  color: #2196f3;
+  text-decoration: none;
+  font-size: 1.2em;
+  width: 20px;
+  height: 20px;
+  transition: all 0.2s ease;
+  background: rgba(33, 150, 243, 0.1);
+  border-radius: 50%;
+  padding: 2px;
+}
+
+.info-icon:hover {
+  opacity: 1;
+  text-decoration: none;
+}
+
+input[type="text"],
+input[type="password"],
+select {
+  width: 100%;
+  padding: 6px 10px;
+  margin-top: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+/* Wrap inputs that include an inline eye toggle */
+.input-with-eye {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-eye > input[type="password"],
+.input-with-eye > input[type="text"] {
+  padding-right: 36px; /* space for eye button */
+}
+
+.eye-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto;
+  height: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: white;
+  cursor: default;
+  -webkit-app-region: no-drag;
+  padding: 0;
+}
+
+.eye-btn:hover {
+  background: transparent;
+}
+
+.eye-btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.eye-icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+select:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
+}
+
+#configPanel input[type="text"],
+#configPanel input[type="password"] {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  box-sizing: border-box;
+}
+
+#configPanel select {
+  min-width: 200px;
+  padding: 8px 30px 8px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  box-sizing: border-box;
+}
+
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: rgba(0, 0, 0, 0.4);
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px;
+  padding-right: 30px;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 6px 30px 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+select:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
+}
+
+select option {
+  background-color: #2a2a2a;
+  color: white;
+  padding: 8px 12px;
+}
+
+/* Remove default arrow in IE10 and IE11 */
+select::-ms-expand {
+  display: none;
+}
+
+#startBtn {
+  width: 100%;
+  padding: 10px;
+  white-space: nowrap;
+  height: 40px;
+  margin-top: 8px;
+  font-size: 1em;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+#startBtn:hover {
+  background: #3a7bc8;
+}
+
+#startBtn:active {
+  transform: scale(0.98);
+}
+
+/* Conversation History */
+.conversation-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  margin-bottom: 8px;
+}
+
+.conversation-header {
+  padding: 10px 60px 10px 12px; /* Right padding for buttons */
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+.conversation-header {
+  position: relative;
+  overflow: visible;
+  padding-right: 12px; /* Standard right padding; scroll buttons removed */
+  min-height: 40px; /* Ensure header has enough height */
+  display: flex;
+  align-items: center;
+}
+
+/* Removed custom scroll buttons; using native scroll */
+
+/* Input Panel */
+.input-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  -webkit-app-region: no-drag;
+  display: flex;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  padding: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Input Field */
+.ask-input {
+  flex: 1;
+  padding: 10px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.ask-input:focus {
+  border-color: #4a90e2;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
+}
+
+.ask-button {
+  padding: 0 20px;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.ask-button:hover {
+  background: #357abd;
+}
+
+.ask-button:active {
+  transform: scale(0.98);
+}
+
+.conversation-history {
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Let the outer scroll-container manage scrolling to avoid nested scroll issues */
+  max-height: none;
+  overflow: visible;
+}
+
+.message {
+  padding: 8px 12px;
+  border-radius: 8px;
+  max-width: 85%;
+  line-height: 1.4;
+  font-size: 14px;
+  word-wrap: break-word;
+}
+
+.message.user {
+  background: rgba(255, 255, 255, 0.1);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.message.assistant {
+  background: rgba(0, 120, 255, 0.2);
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+/* Current Interaction */
+#currentInteraction {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#caption {
+  font-size: 15px;
+  line-height: 1.4;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-left: 3px solid #ff9800;
+}
+
+#aiResponse {
+  font-size: 14px;
+  line-height: 1.4;
+  padding: 10px 12px;
+  background: rgba(0, 120, 255, 0.15);
+  border-left: 3px solid #2196f3;
+  color: #e0f0ff;
+}
+
+.status {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+input, button, select {
+  margin-top: 4px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-size: 14px;
+}
+
+input:focus, button:focus, select:focus {
+  outline: none;
+  border-color: rgba(33, 150, 243, 0.5);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.ask-input {
+  flex: 1;
+  margin-right: 8px;
+  margin-top: 0;
+}
+
+.ask-button {
+  width: auto;
+  min-width: 80px;
+  margin-top: 0;
+  background: rgba(33, 150, 243, 0.8);
+  border: none;
+  font-weight: 500;
+}
+
+.ask-button:hover {
+  background: rgba(33, 150, 243, 1);
+}
+
+.input-panel {
+  display: flex;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+button {
+  background: rgba(255,255,255,0.1);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* Close button */
+.close-btn {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(33, 150, 243, 0.9);
+  border-radius: 4px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1001;
+  padding: 0;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.close-btn:hover {
+  background: #1976d2;
+  transform: scale(1.1);
+}
+
+.close-btn:active {
+  transform: scale(0.95);
+}
+
+.close-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  margin-top: -1px;
+  margin-left: 1px;
+}
+
+/* Minimize button: placed to the left of the close button */
+.min-btn {
+  position: fixed;
+  top: 15px;
+  right: 50px; /* 15px (padding) + 28px (close width) + ~7px gap */
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(33, 150, 243, 0.9);
+  border-radius: 4px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1001;
+  padding: 0;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.min-btn:hover {
+  background: #1976d2;
+  transform: scale(1.1);
+}
+
+.min-btn:active {
+  transform: scale(0.95);
+}
+
+.min-icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.floating-buttons {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  border-radius: 8px;
+  padding: 6px 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+  margin-bottom: 8px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.gear-btn, .stop-btn {
+  width: auto;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Tabs Bar */
+.tabs {
+  -webkit-app-region: no-drag; /* allow clicking tabs */
+  display: flex;
+  gap: 4px;
+  padding: 6px 6px 0 6px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0.3));
+  backdrop-filter: blur(4px);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 8px; /* further reduced space below the tabs */
+}
+
+.tab {
+  -webkit-app-region: no-drag;
+  background: rgba(255,255,255,0.08);
+  color: #eee;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-bottom: none;
+  padding: 5px 8px; /* tighter tab padding */
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.tab:hover { background: rgba(255,255,255,0.16); }
+
+.tab.active {
+  background: rgba(74, 144, 226, 0.25);
+  color: #fff;
+  border-color: rgba(74, 144, 226, 0.5);
+}
+
+/* Tab Panels */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Status chip */
+.status-chip {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-chip .chip {
+  -webkit-app-region: no-drag;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08);
+  color: #eee;
+}
+
+.status-chip .chip.conn.on {
+  background: rgba(76, 175, 80, 0.25);
+  color: #e8f5e9;
+  border-color: rgba(76,175,80,0.5);
+}
+
+.status-chip .chip.conn.off {
+  background: rgba(244, 67, 54, 0.25);
+  color: #ffebee;
+  border-color: rgba(244,67,54,0.5);
+}
+
+.status-chip .chip.mode {
+  background: rgba(33, 150, 243, 0.2);
+  color: #e0f2ff;
+  border-color: rgba(33,150,243,0.45);
+}
+
+.status-chip .sep { opacity: 0.6; }
+/* Copied from original style.css at project root */
+
+/* --- Custom in-overlay dropdown (Gemini Model) --- */
+.custom-select {
+  position: relative;
+  display: block; /* take full row width */
+  width: 100%;
+}
+
+.custom-select-button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-radius: 4px;
+  cursor: default; /* presentation mode keeps cursor default */
+}
+
+.custom-select-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  z-index: 2000; /* above panel content but within overlay */
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.custom-select-list li {
+  padding: 8px 10px;
+  border-radius: 4px;
+  color: #eee;
+}
+
+.custom-select-list li.selected {
+  background: rgba(74,144,226,0.25);
+  color: #fff;
+}
+
+/* In presentation mode, suppress hover visuals while remaining clickable */
+body.presentation .custom-select-list li:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+/* Presentation Mode: keep cursor static and suppress visual interaction cues */
+body.presentation, body.presentation * {
+  cursor: default !important;
+}
+
+body.presentation button,
+body.presentation a,
+body.presentation [role="button"],
+body.presentation input,
+body.presentation select,
+body.presentation textarea {
+  /* Lock cursor to default on interactive elements */
+  cursor: default !important;
+  /* Neutral base visuals */
+  transition: none !important;
+}
+
+/* Suppress hover/focus/active styling while keeping elements functional */
+body.presentation button:hover,
+body.presentation button:focus,
+body.presentation button:active,
+body.presentation a:hover,
+body.presentation a:focus,
+body.presentation a:active,
+body.presentation [role="button"]:hover,
+body.presentation [role="button"]:focus,
+body.presentation [role="button"]:active,
+body.presentation input:hover,
+body.presentation input:focus,
+body.presentation input:active,
+body.presentation select:hover,
+body.presentation select:focus,
+body.presentation select:active,
+body.presentation textarea:hover,
+body.presentation textarea:focus,
+body.presentation textarea:active {
+  outline: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  /* Keep background/border consistent (do not change on hover/active) */
+  background: inherit !important;
+  border-color: inherit !important;
+}
+
+/* Keep the tab buttons from visually changing on hover when presenting */
+body.presentation .tab:hover,
+body.presentation .tab.active {
+  background: rgba(255,255,255,0.08) !important;
+  color: #eee !important;
+  border-color: rgba(255,255,255,0.15) !important;
+}
+
+/* Allow the model dropdown to function normally (no pointer-events override) */
