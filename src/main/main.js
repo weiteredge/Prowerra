@@ -1,9 +1,23 @@
 // src/main/main.js
-const { app, ipcMain, BrowserWindow, shell, dialog } = require("electron");
+const { app, ipcMain, BrowserWindow, shell, dialog, session } = require("electron");
 const { createOverlay } = require("./overlay");
 const transcription = require("./transcription");
 const { exec } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+
+// Mitigate cache permission errors by moving userData and disabling on-disk cache
+try {
+  const tempUserData = path.join(app.getPath('temp'), 'winoverlay-userdata');
+  app.setPath('userData', tempUserData);
+  app.commandLine.appendSwitch('disable-http-cache');
+  app.commandLine.appendSwitch('disk-cache-size', '0');
+  // Also redirect crashDumps and logs to temp to avoid permission issues
+  app.setPath('crashDumps', path.join(tempUserData, 'Crashpad'));
+  app.setAppLogsPath(path.join(tempUserData, 'logs'));
+} catch (_) {
+  // ignore
+}
 
 let overlayWindow;
 
@@ -111,7 +125,8 @@ ipcMain.on('minimize-window', () => {
 });
 
 // Lifecycle
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  try { await session.defaultSession.clearCache(); } catch (_) {}
   overlayWindow = createOverlay();
 });
 
