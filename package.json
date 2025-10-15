@@ -1,0 +1,52 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "My Electron App with native module",
+  "main": "src/main/main.js",
+  "author": "weiteredge",
+  "license": "ISC",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "electron-builder install-app-deps",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "electron": "^38.2.0",
+    "electron-builder": "^22.14.13",
+    "electron-rebuild": "^3.2.9"
+  },
+  "build": {
+    "appId": "com.weiteredge.prowerra",
+    "productName": "Prowerra",
+    "forceCodeSigning": false,
+    "files": [
+      "**/*",
+      {
+        "from": "native/build/Release",
+        "to": "native/build/Release",
+        "filter": [
+          "*.node"
+        ]
+      }
+    ],
+    "asarUnpack": [
+      "native/build/Release/*.node",
+      "node_modules/ffmpeg-static/**"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
