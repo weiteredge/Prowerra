@@ -6,9 +6,7 @@
   <link rel="stylesheet" href="../styles/style.css">
 </head>
 <body>
-  <!-- Top drag gutter -->
   <div class="drag-gutter top" title="Drag window"></div>
-  <!-- Minimize and Close buttons -->
   <button id="minBtn" class="min-btn" title="Minimize Window" aria-label="Minimize">
     <svg class="min-icon" viewBox="0 0 24 24" width="16" height="16">
       <path fill="currentColor" d="M19 13H5v-2h14v2z"/>
@@ -20,15 +18,12 @@
     </svg>
   </button>
 
-  <!-- Floating Action Button (Stop) -->
   <div class="fab-container">
     <button id="stopBtn" class="fab-stop" title="Stop Transcription" aria-label="Stop">⏹stop</button>
   </div>
   
 
-  <!-- Scrollable content area with tabs -->
   <div class="scroll-container">
-    <!-- Tabs Bar -->
     <div class="tabs">
       <button id="tabSettings" class="tab active" title="Setup (API keys and options)">Setup</button>
       <button id="tabLive" class="tab" title="Live view">Live</button>
@@ -39,7 +34,6 @@
       </div>
     </div>
 
-    <!-- LIVE PANEL -->
     <div id="panel-live" class="tab-panel">
       <div id="currentInteraction">
         <div id="caption" class="panel caption-panel">🎤 Waiting for captions...</div>
@@ -48,7 +42,6 @@
       <div id="status" class="panel status">Status: idle</div>
     </div>
 
-    <!-- HISTORY PANEL -->
     <div id="panel-history" class="tab-panel">
       <div id="conversation" class="conversation-container">
         <div class="conversation-header">
@@ -63,7 +56,6 @@
       </div>
     </div>
 
-    <!-- CODE PANEL -->
     <div id="panel-code" class="tab-panel">
       <div class="panel" style="padding:0; position:relative;">
         <button id="copyCodeBtn" class="small-btn" aria-label="Copy code" style="position:absolute; top:4px; right:8px; z-index:2; display:inline-flex; align-items:center; gap:6px;">
@@ -77,7 +69,6 @@
       </div>
     </div>
 
-    <!-- SETTINGS PANEL -->
     <div id="panel-settings" class="tab-panel active">
       <div class="panel" id="configPanel">
         <div class="form-group">
@@ -110,13 +101,11 @@
         </div>
         <label>Gemini Model:</label>
         <div class="custom-select" id="geminiModelWrap">
-          <!-- Hidden native select kept for compatibility with existing code -->
           <select id="geminiModel" style="display:none">
             <option value="gemini-2.5-flash">gemini-2.5-flash</option>
             <option value="gemini-1.5-flash">gemini-1.5-flash</option>
             <option value="gemini-pro">gemini-pro</option>
           </select>
-          <!-- Visible in-overlay dropdown (no OS popup) -->
           <button type="button" class="custom-select-button" id="geminiModelBtn" aria-haspopup="listbox" aria-expanded="false">
             <span id="geminiModelLabel">gemini-2.5-flash</span>
             <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="margin-left:6px; opacity:0.8;">
@@ -173,9 +162,8 @@
       </div>
     </div>
 
-  </div> <!-- End of scroll-container -->
+  </div> 
 
-  <!-- Fixed input panel at bottom -->
   <div class="input-panel">
     <input id="askInput" type="text" placeholder="Ask Gemini anything..." class="ask-input">
     <button id="askBtn" class="ask-button">Ask</button>
