@@ -12,6 +12,7 @@ function createOverlay() {
     height: 540,
     icon: iconPath,
     skipTaskbar: true,
+    show: false,
     alwaysOnTop: true,
     transparent: true,
     frame: false,
@@ -24,6 +25,33 @@ function createOverlay() {
       contextIsolation: false,
     },
   });
+
+  // Prevent minimizing to avoid taskbar flashes
+  try { overlayWindow.setMinimizable(false); } catch (_) {}
+
+  // Ensure the window never shows a taskbar icon by applying skipTaskbar before showing
+  try {
+    overlayWindow.setSkipTaskbar(true);
+    overlayWindow.on('ready-to-show', () => {
+      try {
+        overlayWindow.setSkipTaskbar(true);
+        // Show without activating/focusing the window (prevents taskbar flash)
+        if (typeof overlayWindow.showInactive === 'function') {
+          overlayWindow.showInactive();
+        } else {
+          overlayWindow.show();
+        }
+      } catch (_) {}
+    });
+    overlayWindow.on('show', () => {
+      try { overlayWindow.setSkipTaskbar(true); } catch (_) {}
+    });
+    overlayWindow.on('focus', () => {
+      try { overlayWindow.setSkipTaskbar(true); } catch (_) {}
+    });
+  } catch (_) {
+    // ignore
+  }
 
   // Prevent this window from being captured by screen sharing/recording tools
   try {
