@@ -38,7 +38,7 @@ function stripTooltips() {
 // Kick off tooltip stripping immediately
 stripTooltips();
 
-// ---------- Custom Gemini Model Dropdown ----------
+// ---------- Custom Prowerra Model Dropdown ----------
 function setupCustomModelDropdown() {
   if (!geminiModelSelect || !geminiModelBtn || !geminiModelList || !geminiModelLabel) return;
 
@@ -101,8 +101,18 @@ function setupCustomModelDropdown() {
         geminiModelSelect.dispatchEvent(evt);
       }
     }
-    // Update label text
-    geminiModelLabel.textContent = value;
+    
+    // Map Gemini model names to Prowerra display names
+    const modelDisplayNames = {
+      'gemini-2.5-flash': 'prowerra-2.5-flash',
+      'gemini-1.5-flash': 'prowerra-1.5-flash', 
+      'gemini-pro': 'prowerra-pro'
+    };
+    
+    // Update label text with Prowerra name
+    const displayName = modelDisplayNames[value] || value;
+    geminiModelLabel.textContent = displayName;
+    
     // Update list selection state
     const items = geminiModelList.querySelectorAll('[role="option"]');
     items.forEach((item) => {
@@ -132,7 +142,7 @@ const vbApplyBtn = document.getElementById('vbApplyBtn');
 const vbStatus = document.getElementById('vbStatus');
 // Download history
 const downloadHistoryBtn = document.getElementById('downloadHistoryBtn');
-// Custom select elements for Gemini model
+// Custom select elements for Prowerra model
 const geminiModelSelect = document.getElementById('geminiModel');
 const geminiModelBtn = document.getElementById('geminiModelBtn');
 const geminiModelList = document.getElementById('geminiModelList');
@@ -147,6 +157,7 @@ let lastAskedIsCode = false;
 let pauseLiveWhileTyping = true; // settings toggle
 let lastTypingAt = 0; // timestamp of last keystroke in Ask input
 let lastHeardText = ''; // latest voice transcript (even when UI updates are paused)
+let codeCurrentlyDisplayed = false; // track if code section is currently visible
 
 // Adjust bottom padding to avoid overlap with fixed input panel
 function adjustScrollPadding() {
@@ -167,13 +178,13 @@ function adjustScrollPadding() {
   // Also cap the code answer area so it ends above the input panel
   if (codeAnswerEl) {
     const viewportH = window.innerHeight || document.documentElement.clientHeight;
-    const available = Math.max(150, viewportH - inputH - tabsH - 20);
+    const available = Math.max(150, viewportH - inputH - tabsH - 60); // Extra space for code section header
     codeAnswerEl.style.maxHeight = available + 'px';
     codeAnswerEl.style.overflowY = 'auto';
     codeAnswerEl.style.overflowX = 'hidden';
   }
 
-  // Initialize custom Gemini model dropdown
+  // Initialize custom Prowerra model dropdown
   setupCustomModelDropdown();
 
   // Presentation Mode default ON: keep cursor static and suppress hover visuals
@@ -229,13 +240,11 @@ function updateModeChip(mode) {
 
 // Wire up tab buttons after DOM loads
 document.addEventListener('DOMContentLoaded', () => {
-  const tabLive = document.getElementById('tabLive');
-  const tabCode = document.getElementById('tabCode');
+  const tabAssistant = document.getElementById('tabAssistant');
   const tabHistory = document.getElementById('tabHistory');
   const tabSettings = document.getElementById('tabSettings');
 
-  if (tabLive) tabLive.addEventListener('click', () => setActiveTab('live'));
-  if (tabCode) tabCode.addEventListener('click', () => setActiveTab('code'));
+  if (tabAssistant) tabAssistant.addEventListener('click', () => setActiveTab('assistant'));
   if (tabHistory) tabHistory.addEventListener('click', () => setActiveTab('history'));
   if (tabSettings) tabSettings.addEventListener('click', () => setActiveTab('settings'));
 
@@ -246,11 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const btn = e.target.closest('button.tab');
       if (!btn) return;
       switch (btn.id) {
-        case 'tabLive':
-          setActiveTab('live');
-          break;
-        case 'tabCode':
-          setActiveTab('code');
+        case 'tabAssistant':
+          setActiveTab('assistant');
           break;
         case 'tabHistory':
           setActiveTab('history');
@@ -288,11 +294,9 @@ ipcRenderer.on("transcription", (event, text) => {
     statusEl.innerText = "Status: listening...";
   }
   
-  // If we were showing a previous answer, add it to history
-  if (currentAnswer) {
-    addToHistory('assistant', currentAnswer);
-    currentAnswer = '';
-  }
+  // DON'T clear currentAnswer or hide code section during transcription
+  // Let the AI response handler decide when to hide/show code section
+  // This prevents code from disappearing while user is still speaking
 });
 
 ipcRenderer.on("connection-status", (event, status) => {
@@ -318,39 +322,66 @@ ipcRenderer.on("mode-change", (event, mode) => {
   updateModeChip(mode);
 });
 
+let lastResponseUpdateTime = 0;
+const minResponseUpdateInterval = 800; // 0.8 seconds minimum between response updates
+
 ipcRenderer.on("gemini-response", (event, text) => {
   if (!text.trim()) return;
-  // If a manual question is in progress, ignore live updates to prevent overwriting
-  if (pauseLiveWhileTyping && isProcessing) return;
-
+  // Prevent rapid response updates that cause flashing
+  const now = Date.now();
+  if (now - lastResponseUpdateTime < minResponseUpdateInterval) {
+    // Still update but add visual indication that response is being processed
+    if (statusEl) statusEl.innerText = "Status: Processing new response...";
+    return;
+  }
+  
+  lastResponseUpdateTime = now;
   currentAnswer = text;
   const userContext = currentQuestion || lastHeardText || '';
   const intent = lastAskedIsCode || isCodeIntent(userContext);
   const parts = splitExplanationAndCode(text);
   let code = parts.code;
   let explanation = parts.explanation;
+  
+  // Debug logging
+  console.log('Response received:', text);
+  console.log('Intent detected:', intent);
+  console.log('Code extracted:', code);
+  console.log('Explanation extracted:', explanation);
   if (!code && intent) {
     // Treat full as code when intent is code but no fence present
     code = text;
     // Keep the same text as explanation so user still sees an answer in Live
     explanation = text;
   }
-  if (code) {
-    if (codeAnswer) codeAnswer.textContent = code;
-    if (aiEl) aiEl.textContent = explanation || "Code answer available in Code tab";
-    // Respect user's selection of Settings tab; don't auto-switch away from it
-    const settingsActive = document.getElementById('tabSettings') && document.getElementById('tabSettings').classList.contains('active');
-    if (!settingsActive) setActiveTab('code');
-  } else {
-    if (aiEl) aiEl.textContent = text;
-    // Do NOT clear existing code when a non-code message arrives
-    // Only switch to Live if the user is not currently viewing the Code tab
-    const tabCodeBtn = document.getElementById('tabCode');
-    const codeTabActive = tabCodeBtn && tabCodeBtn.classList.contains('active');
-    const settingsActive = document.getElementById('tabSettings') && document.getElementById('tabSettings').classList.contains('active');
-    if (!codeTabActive && !settingsActive) setActiveTab('live');
+  const codeSection = document.getElementById('codeSection');
+  
+  // Add smooth transition effect
+  if (aiEl) {
+    aiEl.style.opacity = '0.7';
+    setTimeout(() => {
+      if (code) {
+        if (codeAnswer) codeAnswer.textContent = code;
+        aiEl.textContent = explanation || "Code response shown below";
+        if (codeSection) {
+          codeSection.style.display = 'block';
+          codeCurrentlyDisplayed = true;
+        }
+      } else {
+        aiEl.textContent = text;
+        // NEVER hide code section for non-technical responses
+        // Code section should persist until next coding question replaces it
+        // Only update the text response, keep code section visible
+      }
+      aiEl.style.opacity = '1';
+    }, 100);
   }
-  statusEl.innerText = "Status: AI updated";
+  
+  // Respect user's selection of Settings tab; don't auto-switch away from it
+  const settingsActive = document.getElementById('tabSettings') && document.getElementById('tabSettings').classList.contains('active');
+  if (!settingsActive) setActiveTab('assistant');
+  
+  statusEl.innerText = "Status: AI response updated";
   // Reset flag after handling
   lastAskedIsCode = false;
   
@@ -373,18 +404,23 @@ ipcRenderer.on("qa-response", (event, text) => {
       code = text;
       explanation = text;
     }
+    const codeSection = document.getElementById('codeSection');
+    
     if (code) {
       if (codeAnswer) codeAnswer.textContent = code;
-      if (aiEl) aiEl.textContent = explanation || "Code answer available in Code tab";
+      if (aiEl) aiEl.textContent = explanation || "Code response shown below";
+      if (codeSection) {
+        codeSection.style.display = 'block';
+        codeCurrentlyDisplayed = true;
+      }
       const settingsActive = document.getElementById('tabSettings') && document.getElementById('tabSettings').classList.contains('active');
-      if (!settingsActive) setActiveTab('code');
+      if (!settingsActive) setActiveTab('assistant');
     } else {
       if (aiEl) aiEl.textContent = text;
-      // Preserve existing code view and avoid switching away if user is on Code tab
-      const tabCodeBtn = document.getElementById('tabCode');
-      const codeTabActive = tabCodeBtn && tabCodeBtn.classList.contains('active');
+      // NEVER hide code section for non-technical responses
+      // Code section should persist until next coding question replaces it
       const settingsActive = document.getElementById('tabSettings') && document.getElementById('tabSettings').classList.contains('active');
-      if (!codeTabActive && !settingsActive) setActiveTab('live');
+      if (!settingsActive) setActiveTab('assistant');
     }
     // Update history (include the user side if available)
     const q = userContext.trim();
@@ -399,29 +435,33 @@ ipcRenderer.on("qa-response", (event, text) => {
 function isCodeIntent(text) {
   if (!text) return false;
   const t = text.toLowerCase();
-  const verbNoun = /(write|show|give|create|generate|build|make|provide|implement|produce|print|example|sample)\b[\s\S]{0,40}\b(code|snippet|program|script|function|class|module|algorithm)/i;
+  const verbNoun = /(write|show|give|create|generate|build|make|provide|implement|produce|print|example|sample)\b[\s\S]{0,40}\b(code|snippet|program|script|function|class|module|algorithm|component|hook|api|endpoint)/i;
   const programTo = /(program|script)\s+to\b/i;
-  const lang = /(python|py|javascript|js|node|typescript|java|c\+\+|c#|c|go|rust|ruby|php)/i;
-  const langCombo = new RegExp(`${lang.source}[^\n]{0,30}(code|snippet|program|script|function|class)`, 'i');
+  const lang = /(python|py|javascript|js|node|nodejs|typescript|ts|java|c\+\+|c#|c|go|rust|ruby|php|react|vue|angular|express)/i;
+  const langCombo = new RegExp(`${lang.source}[^\n]{0,30}(code|snippet|program|script|function|class|component|hook|api)`, 'i');
   const langVerb = new RegExp(`(write|create|generate|build|make|implement)[^\n]{0,30}${lang.source}`, 'i');
-  return verbNoun.test(t) || programTo.test(t) || langCombo.test(t) || langVerb.test(t);
+  const explicitCode = /(console\.log|console\.error|usestate|useeffect|componentdidmount|app\.get|app\.post|import |export |require)/i;
+  const reactNode = /(react|node|express|mongodb|mysql|postgresql)\s+(code|component|server|api|function|hook)/i;
+  return verbNoun.test(t) || programTo.test(t) || langCombo.test(t) || langVerb.test(t) || explicitCode.test(t) || reactNode.test(t);
 }
 
 // Helper: extract fenced code block content
 function extractFencedCode(text) {
   if (!text) return null;
-  const m = text.match(/```(?:\w+)?\n([\s\S]*?)```/);
-  return m ? m[1] : null;
+  // Handle both formats: ```sql\ncode``` and ```sql code```
+  const m = text.match(/```(?:\w+)?\s*([\s\S]*?)```/);
+  return m ? m[1].trim() : null;
 }
 
 // Split response into explanation (before first fenced code) and code (inside fence)
 function splitExplanationAndCode(text) {
   if (!text) return { explanation: '', code: '' };
-  const fence = text.match(/```(?:\w+)?\n([\s\S]*?)```/);
+  // Handle both formats: ```sql\ncode``` and ```sql code```
+  const fence = text.match(/```(?:\w+)?\s*([\s\S]*?)```/);
   if (!fence) return { explanation: text.trim(), code: '' };
-  const idx = text.indexOf(fence[0]);
+  const idx = text.indexOf('```');
   const explanation = text.slice(0, idx).trim();
-  const code = fence[1];
+  const code = fence[1].trim();
   return { explanation, code };
 }
 
@@ -449,10 +489,10 @@ startBtn.addEventListener("click", () => {
       statusEl.innerText = "Error starting transcription: " + res.error;
       if (stopBtn) stopBtn.style.display = 'none';
     }
-    // On success, switch to Live tab
+    // On success, switch to Assistant tab
     if (res && res.success) {
       isStarted = true;
-      setActiveTab('live');
+      setActiveTab('assistant');
     }
   });
 });
@@ -470,8 +510,7 @@ stopBtn.addEventListener("click", () => {
 // Tab switching helpers
 function setActiveTab(tab) {
   const tabs = [
-    { btn: document.getElementById('tabLive'), panel: document.getElementById('panel-live'), key: 'live' },
-    { btn: document.getElementById('tabCode'), panel: document.getElementById('panel-code'), key: 'code' },
+    { btn: document.getElementById('tabAssistant'), panel: document.getElementById('panel-assistant'), key: 'assistant' },
     { btn: document.getElementById('tabHistory'), panel: document.getElementById('panel-history'), key: 'history' },
     { btn: document.getElementById('tabSettings'), panel: document.getElementById('panel-settings'), key: 'settings' },
   ];
@@ -731,16 +770,18 @@ askBtn.addEventListener("click", () => {
   }
 
   isProcessing = true;
-  statusEl.innerText = "Asking Gemini...";
+  statusEl.innerText = "Asking Prowerra...";
   if (askBtn) askBtn.disabled = true;
   // Immediately reflect the user's question and a thinking placeholder for faster perceived response
   currentQuestion = question;
   if (captionEl) captionEl.innerText = question;
   if (aiEl) aiEl.textContent = 'Thinking…';
-  // If the user likely asked for code, prime the Code tab with a placeholder
+  // If the user likely asked for code, show the code section
   const wantsCode = isCodeIntent(question);
   lastAskedIsCode = wantsCode;
-  if (wantsCode && codeAnswer) {
+  const codeSection = document.getElementById('codeSection');
+  if (wantsCode && codeAnswer && codeSection) {
+    codeSection.style.display = 'block';
     codeAnswer.textContent = '// Generating code…';
   }
   // Reset typing marker so live updates aren't paused too long after sending

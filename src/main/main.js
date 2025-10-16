@@ -145,7 +145,7 @@ app.on("before-quit", () => {
 // --- NEW: manual Q&A ---
 ipcMain.handle("ask-gemini", async (event, question) => {
   try {
-    const answer = await transcription.askGemini(question);
+    const answer = await transcription.askProwerra(question);
     overlayWindow.webContents.send("qa-response", answer);
     return { success: true };
   } catch (err) {
