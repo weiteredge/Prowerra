@@ -189,7 +189,7 @@ let interviewHistory = [
   {
     role: "user",
     parts: [{
-      text: "You are my interview assistant. For non-technical questions, provide short, direct, professional first-person answers (2-3 sentences max). For coding/SQL/technical questions, provide a brief explanation (1-2 sentences) followed by clean, working code in proper markdown code blocks. Always be concise and professional."
+      text: "You are my interview assistant. For non-technical questions, provide detailed, professional first-person answers with specific examples and experiences when relevant (4-6 sentences). For coding/SQL/technical questions, provide a clear explanation followed by complete working code in proper markdown code blocks. Be thorough, helpful, and professional while demonstrating expertise."
     }]
   }
 ];
@@ -198,7 +198,7 @@ let qaHistory = [
   {
     role: "user",
     parts: [{
-      text: "You are a helpful coding and general knowledge assistant. Provide clear explanations and complete working code if asked. For code, use markdown code blocks with language specification. Be concise but thorough in explanations."
+      text: "You are a helpful coding and general knowledge assistant. Provide detailed, comprehensive explanations with practical examples when relevant. For code questions, always include complete working code with clear explanations. Use markdown code blocks with proper language specification. Be thorough and educational - explain concepts clearly, provide context, and include real-world examples or use cases when helpful. Aim to be genuinely helpful rather than just brief."
     }]
   }
 ];
@@ -218,10 +218,10 @@ async function callGemini(history) {
     generationConfig: {
       thinkingConfig: { thinkingBudget: 0 },
       // Reduce maxOutputTokens for faster responses; long code snippets still supported via follow-ups
-      maxOutputTokens: 300, // Reduced for faster responses
-      temperature: 0.1, // Lower for faster, more focused responses
-      topP: 0.7, // Reduced for faster generation
-      topK: 20, // Reduced for faster generation
+      maxOutputTokens: 600, // Increased for more detailed responses
+      temperature: 0.3, // Higher for more detailed, varied responses
+      topP: 0.8, // Higher for more creative responses
+      topK: 40, // Higher for more varied vocabulary
     },
   };
 
@@ -314,9 +314,12 @@ async function processInterviewQuestion(question) {
                   `\`\`\`\n\n` +
                   `DO NOT just explain what you would do - SHOW the actual code!`;
     } else {
-      // For non-technical questions, keep it short and personal
+      // For non-technical questions, provide detailed and helpful responses
       promptText = `The interviewer just asked: "${question}"\n\n` +
-                  `Provide a concise, professional response in first person (2-3 sentences max). ` +
+                  `Provide a detailed, professional response in first person. ` +
+                  `Include specific examples, experiences, or scenarios when relevant. ` +
+                  `Be thorough and helpful - explain concepts clearly with practical examples. ` +
+                  `Aim for 4-6 sentences that fully address the question. ` +
                   `Be direct and avoid saying things like "I would say" or "I think". ` +
                   `Focus on your experience and skills relevant to the question.`;
     }
