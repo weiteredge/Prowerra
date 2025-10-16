@@ -223,6 +223,20 @@ function adjustScrollPadding() {
 window.addEventListener('DOMContentLoaded', adjustScrollPadding);
 window.addEventListener('resize', adjustScrollPadding);
 
+// Handle logo loading errors
+document.addEventListener('DOMContentLoaded', () => {
+  const logoImg = document.getElementById('companyLogoImg');
+  if (logoImg) {
+    logoImg.addEventListener('error', () => {
+      // Hide logo container if image fails to load
+      const logoContainer = logoImg.closest('.company-logo');
+      if (logoContainer) {
+        logoContainer.style.display = 'none';
+      }
+    });
+  }
+});
+
 // Status chip helpers
 function updateConnChip(connected) {
   const chip = document.getElementById('connChip');

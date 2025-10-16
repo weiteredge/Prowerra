@@ -569,6 +569,35 @@ button:hover {
   margin-left: 1px;
 }
 
+/* Company Logo */
+.company-logo {
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  height: 28px; /* Match close button height */
+  display: flex;
+  align-items: center;
+  z-index: 1000;
+  -webkit-app-region: no-drag;
+  pointer-events: none; /* Allow clicks to pass through */
+  /* Ensure minimum spacing from edges */
+  min-width: 28px;
+}
+
+.company-logo img {
+  height: 28px; /* Match close button height */
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transition: opacity 0.3s ease;
+}
+
+.company-logo:hover img {
+  opacity: 1;
+}
+
 /* Minimize button: placed to the left of the close button */
 .min-btn {
   position: fixed;
